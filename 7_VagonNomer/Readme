@@ -1,0 +1,51 @@
+# Wagon Number Recognition (Vagon Raqamini Aniqlash)
+
+Video (jonli kamera yoki video fayl) orqali temir yo'l yuk vagonlarining
+8 xonali inventar raqamini avtomatik aniqlash va o'qish tizimi.
+
+## Qanday ishlaydi
+
+1. **1-bosqich (Detection):** YOLO modeli har bir kadrda vagon raqami
+   panelini topadi va uni kuzatib boradi (ByteTrack).
+2. **2-bosqich (Classification):** Topilgan panel ichida har bir raqam
+   (0-9) alohida aniqlanadi.
+3. **Tekshirish (Checksum):** GOST 22831 standarti bo'yicha, raqamning
+   oxirgi (8-) xonasi nazorat raqami ekanligidan foydalanib, o'qilgan
+   raqam haqiqiyligi matematik tarzda tekshiriladi va kerak bo'lsa
+   avtomatik tuzatiladi.
+4. **Sessiya boshqaruvi:** Har bir poyezd o'tishi alohida "sessiya"
+   sifatida kuzatiladi, natijalar vaqt bilan faylga yoziladi.
+
+## Talablar
+
+```bash
+pip install ultralytics opencv-python numpy torch
+```
+
+Ixtiyoriy (video siqish uchun): [ffmpeg](https://ffmpeg.org/download.html)
+
+## Fayllar
+
+- `wagon_logic.py` — asosiy dastur
+- `vndetection.pt` — vagon raqami panelini aniqlovchi model (alohida yuklanadi)
+- `vnclassification.pt` — raqam klassifikatori modeli (alohida yuklanadi)
+
+> **Eslatma:** Model fayllari (`.pt`) va video fayllar hajmi katta bo'lgani
+> uchun repozitoriyga qo'shilmagan. Ularni alohida saqlang (masalan Google
+> Drive) va shu papkaga joylashtiring.
+
+## Ishga tushirish
+
+```python
+VIDEO_SOURCE = './test.mp4'  # yoki 0 (jonli kamera uchun)
+```
+
+```bash
+python wagon_logic.py
+```
+
+## Sozlamalar
+
+Asosiy sozlamalar fayl boshida joylashgan — ishonch chegaralari, zona
+kengligi, poyezd sessiyasi vaqti va h.k.
+
