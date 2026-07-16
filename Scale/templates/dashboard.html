@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<title>Kimyo reaktori SCADA</title>
+<style>
+  body { font-family: sans-serif; background: #f4f4f2; margin: 0; padding: 24px; }
+  h1 { font-size: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .card { background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .card .label { font-size: 12px; color: #777; }
+  .card .value { font-size: 24px; font-weight: bold; margin-top: 4px; }
+  .alarms { background: white; border-radius: 8px; padding: 16px; }
+  .alarm-row { padding: 6px 0; border-bottom: 1px solid #eee; font-size: 13px; }
+  .WARNING { color: #b5650b; }
+  .TRIP { color: #c0392b; font-weight: bold; }
+</style>
+</head>
+<body>
+<h1>Kimyo reaktori — SCADA monitoring</h1>
+
+<div class="grid" id="sensorGrid"></div>
+
+<div class="alarms">
+  <h3>Alarmlar</h3>
+  <div id="alarmList"></div>
+</div>
+
+<script>
+const sensorLabels = {
+  temperature: "Harorat (°C)",
+  pressure: "Bosim (bar)",
+  heat_output: "Issiqlik (kW)",
+  speed: "Tezlik (rpm)",
+  ph: "pH",
+  flow_rate: "Sarf (m3/soat)",
+  level_pct: "Sath (%)",
+  vibration: "Tebranish (mm/s)",
+  humidity: "Namlik (%)",
+  voltage: "Kuchlanish (V)",
+  current_a: "Tok (A)"
+};
+
+async function refresh() {
+  const res = await fetch("/api/latest");
+  const data = await res.json();
+  const grid = document.getElementById("sensorGrid");
+  grid.innerHTML = "";
+  for (const key in sensorLabels) {
+    const val = data.reading[key];
+    grid.innerHTML += `<div class="card">
+      <div class="label">${sensorLabels[key]}</div>
+      <div class="value">${val !== undefined ? val : "-"}</div>
+    </div>`;
+  }
+
+  const alarmList = document.getElementById("alarmList");
+  alarmList.innerHTML = data.alarms.map(a =>
+    `<div class="alarm-row ${a.severity}">[${a.severity}] ${a.message} — ${a.ts}</div>`
+  ).join("") || "<p>Alarm yo'q</p>";
+}
+
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>
+
+
+
