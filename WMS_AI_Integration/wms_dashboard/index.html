@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>UzERP - WMS Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .msg { max-width: 75%; padding: 12px 16px; border-radius: 12px; line-height: 1.4; font-size: 14px; white-space: pre-wrap; margin-bottom: 10px; }
+        .msg.bot { align-self: flex-start; background: #1f2430; color: #e8eaf0; border-bottom-left-radius: 4px; }
+        .msg.user { align-self: flex-end; background: #2d5bff; color: white; border-bottom-right-radius: 4px; }
+        .msg.system { align-self: center; background: transparent; color: #8891a5; font-size: 12px; }
+        .audio-tag { font-size: 11px; color: #2ecc71; margin-top: 4px; }
+        #chatMessages::-webkit-scrollbar { width: 6px; }
+        #chatMessages::-webkit-scrollbar-thumb { background: #2a2f3a; border-radius: 3px; }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255,77,79,.5); }
+            70% { box-shadow: 0 0 0 10px rgba(255,77,79,0); }
+            100% { box-shadow: 0 0 0 0 rgba(255,77,79,0); }
+        }
+        .recording { background: #ff4d4f !important; animation: pulse 1.2s infinite; }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-800">
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar -->
+        <div class="w-64 bg-[#111c38] text-gray-300 flex flex-col justify-between select-none">
+            <div>
+                <div class="flex items-center gap-3 px-6 h-16 border-b border-gray-800">
+                    <div class="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white font-bold">W</div>
+                    <div>
+                        <div class="text-white font-semibold text-sm">UzERP</div>
+                        <div class="text-xs text-gray-400">WMS</div>
+                    </div>
+                </div>
+
+                <nav class="p-3 space-y-1 text-sm font-medium">
+                    <button onclick="switchTab('dashboard')" id="nav-dashboard" class="w-full text-left flex items-center gap-3 px-4 py-3 rounded-lg bg-blue-600 text-white transition">
+                        <i class="fa-solid fa-house w-5"></i> Boshqaruv paneli
+                    </button>
+                    <button onclick="switchTab('receipt')" id="nav-receipt" class="w-full text-left flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800/60 transition">
+                        <i class="fa-solid fa-file-invoice w-5"></i> Qabul hujjati (OCR)
+                    </button>
+                    <button onclick="switchTab('slotting')" id="nav-slotting" class="w-full text-left flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800/60 transition">
+                        <i class="fa-solid fa-boxes-stacked w-5"></i> Dinamik Slotting
+                    </button>
+                    <button onclick="switchTab('voice')" id="nav-voice" class="w-full text-left flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800/60 transition">
+                        <i class="fa-solid fa-microphone-lines w-5"></i> Ovozli Yordamchi
+                    </button>
+                    <div class="pt-4 pb-1 px-4 text-xs text-gray-500 uppercase tracking-wider">Boshqa modullar</div>
+                    <div class="px-4 py-2.5 text-gray-400">Ombor</div>
+                    <div class="px-4 py-2.5 text-gray-400">WMS operatsiyalari</div>
+                    <div class="px-4 py-2.5 text-gray-400">Xaridlar</div>
+                    <div class="px-4 py-2.5 text-gray-400">Sotuvlar</div>
+                    <div class="px-4 py-2.5 text-gray-400">Sozlamalar</div>
+                </nav>
+            </div>
+
+            <div class="p-4 border-t border-gray-800 text-xs text-gray-400">
+                <div class="text-white font-medium">Administrator</div>
+                <div>v1.0 - Production</div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col overflow-y-auto">
+            <header class="bg-white border-b border-gray-200 h-16 flex items-center px-8 justify-between sticky top-0 z-10 shadow-xs">
+                <div class="flex items-center gap-4">
+                    <span onclick="switchTab('dashboard')" class="text-gray-400 text-sm cursor-pointer hover:text-gray-600">← Orqaga</span>
+                    <h2 class="text-lg font-bold text-gray-800" id="top-title">Boshqaruv paneli</h2>
+                </div>
+                <div class="flex items-center gap-4 text-sm">
+                    <div class="bg-blue-50 text-blue-700 px-3 py-1 rounded-md font-medium text-xs">🟢 3 ta AI xizmat faol</div>
+                    <div class="flex items-center gap-2 border-l pl-4 border-gray-200">
+                        <div class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs">SA</div>
+                        <span class="font-medium text-gray-700">System Administrator</span>
+                    </div>
+                </div>
+            </header>
+
+            <main class="p-8 space-y-6">
+                <!-- DASHBOARD -->
+                <div id="view-dashboard" class="space-y-6">
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-xs">
+                        <h3 class="text-xl font-bold text-gray-900 mb-1">Boshqaruv paneli</h3>
+                        <p class="text-sm text-gray-500">Xush kelibsiz, System Administrator</p>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-6">
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-xs"><div class="text-gray-400 text-xs font-semibold uppercase">Mahsulotlar</div><div class="text-2xl font-bold text-gray-900 mt-1">65 524</div></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-xs"><div class="text-gray-400 text-xs font-semibold uppercase">Kontragentlar</div><div class="text-2xl font-bold text-gray-900 mt-1">8</div></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-xs"><div class="text-gray-400 text-xs font-semibold uppercase">Omborlar</div><div class="text-2xl font-bold text-gray-900 mt-1">16</div></div>
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-xs"><div class="text-gray-400 text-xs font-semibold uppercase">Foydalanuvchilar</div><div class="text-2xl font-bold text-gray-900 mt-1">14</div></div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-6">
+                        <div onclick="switchTab('receipt')" class="bg-white p-6 rounded-xl border border-gray-200 shadow-xs hover:border-blue-500 cursor-pointer transition">
+                            <h4 class="font-bold text-gray-900 mb-1">1-Topshiriq: Qabul hujjati</h4>
+                            <p class="text-sm text-gray-500">PO buyurtma va kelgan tovar hujjatlarini solishtirish.</p>
+                        </div>
+                        <div onclick="switchTab('slotting')" class="bg-white p-6 rounded-xl border border-gray-200 shadow-xs hover:border-emerald-500 cursor-pointer transition">
+                            <h4 class="font-bold text-gray-900 mb-1">2-Topshiriq: Dinamik Slotting</h4>
+                            <p class="text-sm text-gray-500">Hujjat faylini yuklab yacheyka tavsiyasini olish.</p>
+                        </div>
+                        <div onclick="switchTab('voice')" class="bg-white p-6 rounded-xl border border-gray-200 shadow-xs hover:border-purple-500 cursor-pointer transition">
+                            <h4 class="font-bold text-gray-900 mb-1">3-Topshiriq: Ovozli Yordamchi</h4>
+                            <p class="text-sm text-gray-500">Chat va ovozli xabarlar orqali muloqot qilish.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 1-TOPSHIRIQ: RECEIPT -->
+                <div id="view-receipt" class="space-y-6 hidden">
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-xs max-w-2xl space-y-4">
+                        <h3 class="text-lg font-bold text-gray-900">Qabul hujjati yordamchisi (Solishtirish)</h3>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">1. Kelgan tovar hujjati (packing list/ASN) *</label>
+                            <input type="file" id="actualFile" class="block w-full text-sm text-gray-500 border rounded-lg p-2"/>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">2. Asl buyurtma hujjati rasmi (po_document - ixtiyoriy)</label>
+                            <input type="file" id="poFile" class="block w-full text-sm text-gray-500 border rounded-lg p-2"/>
+                        </div>
+                        <button onclick="uploadReceipts()" class="bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium w-full hover:bg-blue-700 transition">Hujjatlarni Solishtirish va Xulosa olish</button>
+                    </div>
+                    <div id="receiptResult" class="bg-white p-6 rounded-xl border border-gray-200 shadow-xs hidden max-w-4xl">
+                        <h4 class="font-bold text-gray-800 mb-2">AI Xulosasi:</h4>
+                        <div id="receiptOutput" class="bg-gray-50 p-4 rounded-lg text-sm text-gray-800 whitespace-pre-wrap font-sans border"></div>
+                    </div>
+                </div>
+
+                <!-- 2-TOPSHIRIQ: SLOTTING -->
+                <div id="view-slotting" class="space-y-6 hidden">
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-xs max-w-xl space-y-4">
+                        <h3 class="text-lg font-bold text-gray-900">Dinamik Slotting (Hujjat asosida)</h3>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Ombor ID (ixtiyoriy — kiritmasangiz o'zi aniqlaydi)</label>
+                            <input type="number" id="slot_wh" placeholder="Masalan: 1" class="w-full border p-2.5 rounded-lg text-sm"/>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Rasm / PDF / PNG fayl yuklash *</label>
+                            <input type="file" id="slotFile" class="block w-full text-sm text-gray-500 border rounded-lg p-2"/>
+                        </div>
+                        <button onclick="runSlottingFile()" class="bg-blue-600 text-white px-5 py-2.5 rounded-lg w-full hover:bg-blue-700 transition">Joylashuv tavsiyasini olish</button>
+                    </div>
+                    <div id="slottingResult" class="bg-white p-6 rounded-xl border border-gray-200 shadow-xs hidden max-w-4xl">
+                        <h4 class="font-bold text-gray-800 mb-2">Slotting xulosasi:</h4>
+                        <div id="slottingOutput" class="bg-gray-50 p-4 rounded-lg text-sm text-gray-800 whitespace-pre-wrap font-sans border"></div>
+                    </div>
+                </div>
+
+                <!-- 3-TOPSHIRIQ: VOICE / CHAT (test_voice_chat.html ning original kodi) -->
+                <div id="view-voice" class="space-y-4 hidden max-w-4xl">
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-xs flex items-center justify-between text-xs text-gray-600">
+                        <div class="flex items-center gap-2">
+                            <span>Vazifa ID (Task ID):</span>
+                            <input id="taskId" placeholder="bo'sh = birinchi mock vazifa" class="border px-2 py-1 rounded w-52"/>
+                        </div>
+                        <button onclick="restartVoiceSession()" class="bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded font-medium">Qayta boshlash</button>
+                    </div>
+
+                    <div class="bg-[#0f1115] rounded-xl border border-gray-800 shadow-xs flex flex-col h-[520px]">
+                        <div class="p-4 border-b border-gray-800 text-white font-medium text-sm flex justify-between items-center">
+                            <span>WMS Ovoz Yordamchisi — Chat & Audio</span>
+                            <span id="voiceStatus" class="text-xs text-gray-400">Tayyor</span>
+                        </div>
+                        
+                        <div id="chatMessages" class="flex-1 p-4 overflow-y-auto flex flex-col gap-3"></div>
+
+                        <div class="p-3 bg-[#171a21] border-t border-gray-800 rounded-b-xl flex items-center gap-2">
+                            <button id="micBtn" title="Mikrofon" class="w-10 h-10 rounded-full bg-[#2a2f3a] text-white flex items-center justify-center hover:bg-red-600 transition">🎤</button>
+                            <input id="chatInput" type="text" placeholder="Xabar yozing..." class="flex-1 bg-[#0f1115] border border-gray-800 text-white px-4 py-2.5 rounded-full text-sm outline-none focus:border-blue-600"/>
+                            <button id="sendBtn" title="Yuborish" class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 transition">➤</button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tab) {
+            ['dashboard', 'receipt', 'slotting', 'voice'].forEach(t => {
+                const el = document.getElementById('view-' + t);
+                if (el) el.classList.add('hidden');
+            });
+            ['dashboard', 'receipt', 'slotting', 'voice'].forEach(t => {
+                const btn = document.getElementById('nav-' + t);
+                if (btn) {
+                    btn.classList.remove('bg-blue-600', 'text-white');
+                    btn.classList.add('hover:bg-gray-800/60');
+                }
+            });
+
+            const targetView = document.getElementById('view-' + tab);
+            if (targetView) targetView.classList.remove('hidden');
+            
+            const activeBtn = document.getElementById('nav-' + tab);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-blue-600', 'text-white');
+                activeBtn.classList.remove('hover:bg-gray-800/60');
+            }
+
+            const titles = {
+                dashboard: 'Boshqaruv paneli',
+                receipt: 'Qabul hujjati yordamchisi',
+                slotting: 'Dinamik Slotting',
+                voice: 'Ovozli va Chat Yordamchi'
+            };
+            document.getElementById('top-title').innerText = titles[tab] || 'Boshqaruv paneli';
+            
+            if (tab === 'voice' && chatMessages.childElementCount === 0) {
+                sendVoiceTurn({});
+            }
+        }
+
+        async function uploadReceipts() {
+            const actualFile = document.getElementById('actualFile').files[0];
+            const poFile = document.getElementById('poFile').files[0];
+            if (!actualFile) return alert('Iltimos, kelgan tovar hujjatini tanlang!');
+            
+            const formData = new FormData();
+            formData.append('file', actualFile);
+            if (poFile) formData.append('po_document', poFile);
+            
+            document.getElementById('receiptResult').classList.remove('hidden');
+            document.getElementById('receiptOutput').innerText = 'Hujjatlar tahlil qilinib, solishtirilmoqda...';
+            
+            try {
+                const res = await fetch('/api/receipt', {method: 'POST', body: formData});
+                const data = await res.json();
+                document.getElementById('receiptOutput').innerText = data.explanation || JSON.stringify(data, null, 2);
+            } catch (err) {
+                document.getElementById('receiptOutput').innerText = 'Xatolik: ' + err;
+            }
+        }
+
+        async function runSlottingFile() {
+            const file = document.getElementById('slotFile').files[0];
+            if (!file) return alert('Iltimos, tovar hujjati faylini tanlang!');
+
+            const formData = new FormData();
+            formData.append('file', file);
+            const wh = document.getElementById('slot_wh').value;
+            if (wh) formData.append('warehouse_id', wh);
+
+            document.getElementById('slottingResult').classList.remove('hidden');
+            document.getElementById('slottingOutput').innerText = 'Fayldagi tovarlar tahlil qilinib, yacheykalar tavsiya etilmoqda...';
+
+            try {
+                const res = await fetch('/api/slotting-doc', {method: 'POST', body: formData});
+                const data = await res.json();
+                document.getElementById('slottingOutput').innerText = data.summary_text || JSON.stringify(data, null, 2);
+            } catch (err) {
+                document.getElementById('slottingOutput').innerText = 'Xatolik: ' + err;
+            }
+        }
+
+        // --- 3-Topshiriq Ovozli Chat Mantig'i (Original test_voice_chat.html) ---
+        let voiceSessionId = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let activeAudio = null;
+
+        const chatMessages = document.getElementById('chatMessages');
+        const voiceStatus = document.getElementById('voiceStatus');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const micBtn = document.getElementById('micBtn');
+        const taskIdInput = document.getElementById('taskId');
+
+        function addVoiceMsg(role, text, opts = {}) {
+            const div = document.createElement("div");
+            div.className = "msg " + role;
+            div.textContent = text;
+            if (opts.hasAudio) {
+                const tag = document.createElement("div");
+                tag.className = "audio-tag";
+                tag.textContent = "🔊 ovoz ijro etildi";
+                div.appendChild(tag);
+            }
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return div;
+        }
+
+        function playBase64Audio(b64, mime) {
+            if (!b64) return;
+            if (activeAudio) activeAudio.pause();
+            activeAudio = new Audio(`data:${mime || "audio/mpeg"};base64,${b64}`);
+            activeAudio.play().catch(err => {
+                voiceStatus.textContent = "Audio avtomatik ijro etilmadi (brauzer bloklagan bo'lishi mumkin)";
+            });
+        }
+
+        async function sendVoiceTurn({ text = null, audioBlob = null }) {
+            const form = new FormData();
+            if (voiceSessionId) form.append("session_id", voiceSessionId);
+            if (!voiceSessionId && taskIdInput.value) form.append("task_id", taskIdInput.value);
+            if (audioBlob) {
+                form.append("audio", audioBlob, "input.webm");
+            } else if (text) {
+                form.append("text", text);
+            }
+
+            voiceStatus.textContent = "Yuborilmoqda...";
+
+            try {
+                const resp = await fetch('/api/voice', { method: "POST", body: form });
+                if (!resp.ok) {
+                    const errText = await resp.text();
+                    addVoiceMsg("system", `Xato (${resp.status}): ${errText}`);
+                    voiceStatus.textContent = "";
+                    return;
+                }
+
+                const data = await resp.json();
+                voiceSessionId = data.session_id;
+
+                if (data.stt_text) {
+                    addVoiceMsg("user", data.stt_text, { meta: "🎤 mikrofondan tanildi" });
+                }
+
+                if (data.prompt_text) {
+                    addVoiceMsg("bot", data.prompt_text, { hasAudio: !!data.audio_base64 });
+                    playBase64Audio(data.audio_base64, data.audio_mime);
+                }
+
+                voiceStatus.textContent = data.finished ? "Vazifa yakunlandi." : "";
+            } catch (err) {
+                addVoiceMsg("system", `Ulanish xatosi: ${err.message}`);
+                voiceStatus.textContent = "";
+            }
+        }
+
+        sendBtn.addEventListener("click", () => {
+            const text = chatInput.value.trim();
+            if (!text) return;
+            addVoiceMsg("user", text);
+            chatInput.value = "";
+            sendVoiceTurn({ text });
+        });
+
+        chatInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") sendBtn.click();
+        });
+
+        micBtn.addEventListener("click", async () => {
+            if (!isRecording) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+                    mediaRecorder.onstop = () => {
+                        const blob = new Blob(audioChunks, { type: "audio/webm" });
+                        addVoiceMsg("user", "(ovozli xabar yuborildi...)");
+                        sendVoiceTurn({ audioBlob: blob });
+                        stream.getTracks().forEach(t => t.stop());
+                    };
+                    mediaRecorder.start();
+                    isRecording = true;
+                    micBtn.classList.add("recording");
+                    voiceStatus.textContent = "Yozib olinmoqda... to'xtatish uchun yana bosing.";
+                } catch (err) {
+                    voiceStatus.textContent = "Mikrofonga ruxsat berilmadi: " + err.message;
+                }
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                micBtn.classList.remove("recording");
+                voiceStatus.textContent = "Yuborilmoqda...";
+            }
+        });
+
+        function restartVoiceSession() {
+            voiceSessionId = null;
+            chatMessages.innerHTML = "";
+            voiceStatus.textContent = "";
+            sendVoiceTurn({});
+        }
+    </script>
+</body>
+</html>
