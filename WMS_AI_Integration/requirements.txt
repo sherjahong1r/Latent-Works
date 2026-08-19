@@ -1,0 +1,27 @@
+# --- ASOSIY (hozirgi vazifa uchun shart) ---
+fastapi==0.115.0
+uvicorn==0.30.6
+ollama==0.3.3
+python-multipart==0.0.12
+pillow==10.4.0
+pypdf2==3.0.1
+python-dotenv==1.0.1
+pydantic==2.9.2
+httpx==0.27.2
+pymupdf==1.24.10
+
+# --- RAG / BILIM BAZASI UCHUN (keyinroq, hozircha shart emas) ---
+# Windows'da PostgreSQL C kutubxonasi/build vositalari talab qiladi.
+# Hozircha shared/vector_store.py hech qayerda chaqirilmaydi.
+# Kerak bo'lganda alohida o'rnating:
+#   py -m pip install pgvector psycopg2-binary sqlalchemy
+# pgvector==0.3.2
+# psycopg2-binary==2.9.9
+# sqlalchemy==2.0.35
+
+# --- OVOZLI YORDAMCHI UCHUN (keyinroq, hozircha shart emas) ---
+# Windows'da build vositalari talab qilishi mumkin.
+# Kerak bo'lganda alohida o'rnating:
+#   py -m pip install openai-whisper edge-tts
+# openai-whisper==20240930
+# edge-tts==6.1.12

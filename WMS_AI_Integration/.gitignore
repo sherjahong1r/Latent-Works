@@ -1,0 +1,28 @@
+# .env faylini push qilishga ruxsat berish uchun commentga olindi:
+# .env
+# *.env
+# **/.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Eksport qilingan real ma'lumotlar (ombor tarkibi, mahsulotlar)
+bins.csv
+putaway_rules.csv
+bin_product_config.csv
+stock_placement.csv
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local test dashboards (PUSH QILINMAYDI)
+wms_dashboard/
