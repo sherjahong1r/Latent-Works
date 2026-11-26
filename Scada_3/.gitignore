@@ -1,0 +1,23 @@
+# SIRLAR — hech qachon repozitoriyga tushmasin.
+# .env ichida baza paroli va LLM server kaliti bor.
+.env
+.env.*
+!.env.example
+
+# Vaqtinchalik skrinshotlar (har 45 s da yangilanadi)
+temp_screenshots/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Loglar va natijalar
+*.log
+trains/
+
+# IDE
+.idea/
+.vscode/

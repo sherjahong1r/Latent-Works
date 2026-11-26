@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCADA AI Monitoring</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* ── Ranglar. Har bir rang IKKALA mavzuda ham aniq belgilangan ───── */
+:root{
+  --bg:#EEF1F3; --panel:#FBFCFD; --panel-2:#F2F5F6; --raised:#FFFFFF;
+  --ink:#12171A; --ink-2:#39444C; --muted:#69757D;
+  --line:#CFD7DC; --line-soft:#E0E6EA;
+  --accent:#0F6E7A; --accent-soft:#DDEDEF;
+  --ok:#1C7A46; --ok-soft:#DCEDE3;
+  --warn:#8A6205; --warn-soft:#F8EEd7;
+  --crit:#A33020; --crit-soft:#F7E2DD;
+  --shadow:0 1px 2px rgba(16,26,32,.06), 0 4px 14px rgba(16,26,32,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1215; --panel:#161B1F; --panel-2:#1C2227; --raised:#1F262B;
+    --ink:#E4E9EC; --ink-2:#B3BDC4; --muted:#88949B;
+    --line:#2B343A; --line-soft:#222A2F;
+    --accent:#4FB6C2; --accent-soft:#11292D;
+    --ok:#4FBE7E; --ok-soft:#112619;
+    --warn:#D9A945; --warn-soft:#2A2213;
+    --crit:#E4785F; --crit-soft:#2E1814;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 6px 18px rgba(0,0,0,.28);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1215; --panel:#161B1F; --panel-2:#1C2227; --raised:#1F262B;
+  --ink:#E4E9EC; --ink-2:#B3BDC4; --muted:#88949B;
+  --line:#2B343A; --line-soft:#222A2F;
+  --accent:#4FB6C2; --accent-soft:#11292D;
+  --ok:#4FBE7E; --ok-soft:#112619;
+  --warn:#D9A945; --warn-soft:#2A2213;
+  --crit:#E4785F; --crit-soft:#2E1814;
+  --shadow:0 1px 2px rgba(0,0,0,.35), 0 6px 18px rgba(0,0,0,.28);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0; background:var(--bg); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  font-size:15px; line-height:1.6; -webkit-font-smoothing:antialiased}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+
+/* ── Karkas ───────────────────────────────────────────────────────── */
+.shell{display:grid; grid-template-columns:238px minmax(0,1fr); min-height:100vh}
+
+aside{background:var(--panel); border-right:1px solid var(--line);
+  display:flex; flex-direction:column; position:sticky; top:0; height:100vh}
+.brand{padding:20px 18px 16px; border-bottom:1px solid var(--line-soft)}
+.brand b{display:block; font-size:15.5px; font-weight:600; letter-spacing:-.01em}
+.brand span{display:block; font-size:11.5px; color:var(--muted);
+  font-family:"IBM Plex Mono",monospace; letter-spacing:.09em; text-transform:uppercase; margin-top:3px}
+nav{padding:10px; display:flex; flex-direction:column; gap:2px; flex:1; overflow-y:auto}
+.nav-item{display:flex; align-items:center; gap:10px; padding:9px 11px; border-radius:6px;
+  cursor:pointer; font-size:14px; color:var(--ink-2); border:1px solid transparent; user-select:none}
+.nav-item:hover{background:var(--panel-2); color:var(--ink)}
+.nav-item.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent);
+  font-weight:600}
+.nav-item .key{margin-left:auto; font-family:"IBM Plex Mono",monospace; font-size:10.5px;
+  color:var(--muted); border:1px solid var(--line); border-radius:3px; padding:0 5px}
+.nav-item.active .key{border-color:var(--accent); color:var(--accent)}
+.ind{width:8px; height:8px; border-radius:50%; background:var(--line); flex:none}
+.ind.ok{background:var(--ok)} .ind.warn{background:var(--warn)} .ind.crit{background:var(--crit)}
+.side-foot{padding:12px 16px; border-top:1px solid var(--line-soft); font-size:12px; color:var(--muted)}
+.side-foot a{color:var(--accent)}
+
+main{min-width:0; display:flex; flex-direction:column}
+header.bar{position:sticky; top:0; z-index:5; background:var(--panel);
+  border-bottom:1px solid var(--line); padding:13px 26px;
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+header.bar h1{margin:0; font-size:19px; font-weight:600; letter-spacing:-.012em}
+.spacer{flex:1}
+.pill{display:inline-flex; align-items:center; gap:7px; font-size:12.5px; color:var(--ink-2);
+  background:var(--panel-2); border:1px solid var(--line); border-radius:999px; padding:5px 12px}
+.pulse{width:7px; height:7px; border-radius:50%; background:var(--ok); flex:none}
+.pulse.live{animation:pp 2s ease-in-out infinite}
+@keyframes pp{0%,100%{opacity:1}50%{opacity:.25}}
+.btn{display:inline-flex; align-items:center; gap:7px; background:var(--panel-2); color:var(--ink-2);
+  border:1px solid var(--line); border-radius:7px; padding:6px 12px; font-size:13px; cursor:pointer;
+  font-family:inherit}
+.btn:hover{background:var(--raised); color:var(--ink); border-color:var(--accent)}
+.btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.seg{display:inline-flex; border:1px solid var(--line); border-radius:7px; overflow:hidden}
+.seg button{background:var(--panel-2); border:0; color:var(--muted); padding:6px 11px; cursor:pointer;
+  font-family:inherit; font-size:12.5px; border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent-soft); color:var(--accent); font-weight:600}
+
+.wrap{padding:24px 26px 60px; max-width:1180px; width:100%}
+.view{display:none} .view.active{display:block}
+
+/* ── Kartalar ─────────────────────────────────────────────────────── */
+.grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(420px,1fr)); gap:16px}
+.card{background:var(--panel); border:1px solid var(--line); border-radius:10px;
+  padding:16px 18px; box-shadow:var(--shadow)}
+.card.click{cursor:pointer}
+.card.click:hover{border-color:var(--accent)}
+.card h3{margin:0 0 10px; font-size:13px; font-weight:600; color:var(--muted);
+  font-family:"IBM Plex Mono",monospace; letter-spacing:.07em; text-transform:uppercase;
+  display:flex; align-items:center; gap:8px}
+.card h3 .go{margin-left:auto; font-size:11.5px; color:var(--accent); text-transform:none;
+  letter-spacing:0; font-family:"IBM Plex Sans",sans-serif}
+.card p{margin:0; color:var(--ink-2); font-size:14.5px}
+.stripe{border-left:3px solid var(--line)}
+.stripe.ok{border-left-color:var(--ok)} .stripe.warn{border-left-color:var(--warn)}
+.stripe.crit{border-left-color:var(--crit)}
+
+.chip{display:inline-block; font-family:"IBM Plex Mono",monospace; font-size:10.5px;
+  letter-spacing:.07em; text-transform:uppercase; padding:3px 9px; border-radius:4px;
+  border:1px solid var(--line); color:var(--muted); background:var(--panel-2); white-space:nowrap}
+.chip.ok{color:var(--ok); border-color:var(--ok); background:var(--ok-soft)}
+.chip.warn{color:var(--warn); border-color:var(--warn); background:var(--warn-soft)}
+.chip.crit{color:var(--crit); border-color:var(--crit); background:var(--crit-soft)}
+
+.kv{display:grid; grid-template-columns:auto 1fr; gap:6px 14px; font-size:14px; margin-top:10px}
+.kv dt{color:var(--muted); font-size:12.5px; font-family:"IBM Plex Mono",monospace}
+.kv dd{margin:0; color:var(--ink-2)}
+.block{margin-top:14px}
+.blocks{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+  gap:4px 22px; margin-top:4px}
+.block .lbl{font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--muted); margin-bottom:5px}
+.time{font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-2)}
+.time .ago{color:var(--muted); font-weight:400}
+.empty{color:var(--muted); font-size:14px; padding:18px; text-align:center;
+  border:1px dashed var(--line); border-radius:8px; background:var(--panel-2)}
+.list{display:flex; flex-direction:column; gap:12px; margin-top:14px}
+.sec-title{font-size:13px; font-weight:600; color:var(--muted); margin:26px 0 10px;
+  font-family:"IBM Plex Mono",monospace; letter-spacing:.07em; text-transform:uppercase}
+.tools{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px}
+input.search{flex:1; min-width:180px; background:var(--panel); color:var(--ink);
+  border:1px solid var(--line); border-radius:7px; padding:8px 12px; font-family:inherit; font-size:14px}
+input.search:focus{outline:2px solid var(--accent); outline-offset:-1px; border-color:var(--accent)}
+details.raw{background:var(--panel); border:1px solid var(--line); border-radius:9px; overflow:hidden}
+details.raw summary{padding:11px 15px; cursor:pointer; display:flex; align-items:center; gap:12px;
+  font-size:13.5px; list-style:none}
+details.raw summary::-webkit-details-marker{display:none}
+details.raw summary::before{content:"▸"; color:var(--muted); font-size:12px}
+details.raw[open] summary::before{content:"▾"}
+details.raw summary .n{margin-left:auto; font-family:"IBM Plex Mono",monospace; font-size:11.5px;
+  color:var(--muted)}
+pre{margin:0; padding:14px 15px; background:var(--panel-2); border-top:1px solid var(--line-soft);
+  overflow-x:auto; font-family:"IBM Plex Mono",monospace; font-size:12.5px; line-height:1.55;
+  color:var(--ink-2); max-height:460px}
+.rdg{display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:8px; padding:14px 15px;
+  border-top:1px solid var(--line-soft); background:var(--panel-2)}
+.rd{display:flex; justify-content:space-between; gap:10px; font-size:13px; padding:5px 9px;
+  background:var(--panel); border:1px solid var(--line-soft); border-radius:5px}
+.rd b{font-family:"IBM Plex Mono",monospace; font-weight:600; font-variant-numeric:tabular-nums}
+.rd span{color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+
+@media (max-width:820px){
+  .shell{grid-template-columns:1fr}
+  aside{position:static; height:auto; border-right:0; border-bottom:1px solid var(--line)}
+  nav{flex-direction:row; flex-wrap:wrap; overflow:visible}
+  .nav-item .key{display:none}
+  .side-foot{display:none}
+  .wrap{padding:18px 16px 50px}
+  header.bar{padding:11px 16px}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<aside>
+  <div class="brand"><b>SCADA AI Monitoring</b><span>Nazorat paneli</span></div>
+  <nav id="nav">
+    <div class="nav-item active" data-view="home"><span class="ind" id="ind-home"></span> Bosh sahifa <span class="key">1</span></div>
+    <div class="nav-item" data-view="advisor"><span class="ind" id="ind-advisor"></span> AI Maslahatchi <span class="key">2</span></div>
+    <div class="nav-item" data-view="state"><span class="ind" id="ind-state"></span> Zavod xotirasi <span class="key">3</span></div>
+    <div class="nav-item" data-view="predictions"><span class="ind" id="ind-predictions"></span> Bashorat <span class="key">4</span></div>
+    <div class="nav-item" data-view="shift"><span class="ind"></span> Smena hisobotlari <span class="key">5</span></div>
+    <div class="nav-item" data-view="json"><span class="ind"></span> Xom JSON <span class="key">6</span></div>
+  </nav>
+  <div class="side-foot">API hujjatlari: <a href="/docs" target="_blank" rel="noopener">/docs</a></div>
+</aside>
+
+<main>
+  <header class="bar">
+    <h1 id="title">Bosh sahifa</h1>
+    <span class="pill"><span class="pulse live" id="pulse"></span><span id="updated">yuklanmoqda…</span></span>
+    <div class="spacer"></div>
+    <button class="btn" id="refresh" title="Hozir yangilash">↻ Yangilash</button>
+    <button class="btn" id="pause" title="Avtomatik yangilashni to'xtatish">⏸ To'xtatish</button>
+    <div class="seg" role="group" aria-label="Mavzu">
+      <button data-theme-set="auto" aria-pressed="true" title="Tizim mavzusi">Avto</button>
+      <button data-theme-set="light" aria-pressed="false" title="Kunduzgi">☀</button>
+      <button data-theme-set="dark" aria-pressed="false" title="Tungi">☾</button>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <!-- BOSH SAHIFA -->
+    <div class="view active" id="v-home">
+      <div class="grid">
+        <div class="card click" data-goto="advisor"><h3>AI Maslahatchi <span class="go">Batafsil →</span></h3><div id="h-advisor"><div class="empty">Yuklanmoqda…</div></div></div>
+        <div class="card click" data-goto="state"><h3>Zavod xotirasi <span class="go">Batafsil →</span></h3><div id="h-state"><div class="empty">Yuklanmoqda…</div></div></div>
+        <div class="card click" data-goto="predictions"><h3>Bashorat <span class="go">Batafsil →</span></h3><div id="h-pred"><div class="empty">Yuklanmoqda…</div></div></div>
+        <div class="card click" data-goto="shift"><h3>So'nggi smena <span class="go">Batafsil →</span></h3><div id="h-shift"><div class="empty">Yuklanmoqda…</div></div></div>
+      </div>
+      <div class="sec-title">So'nggi o'qish</div>
+      <div id="h-latest"><div class="empty">Yuklanmoqda…</div></div>
+    </div>
+
+    <!-- MASLAHATCHI -->
+    <div class="view" id="v-advisor">
+      <div id="adv-latest"><div class="empty">Yuklanmoqda…</div></div>
+      <div class="sec-title">Oldingi xulosalar</div>
+      <div id="adv-history" class="list"></div>
+    </div>
+
+    <!-- ZAVOD XOTIRASI -->
+    <div class="view" id="v-state"><div id="state-full"><div class="empty">Yuklanmoqda…</div></div></div>
+
+    <!-- BASHORAT -->
+    <div class="view" id="v-predictions"><div id="pred-list" class="list"></div></div>
+
+    <!-- SMENA -->
+    <div class="view" id="v-shift"><div id="shift-list" class="list"></div></div>
+
+    <!-- XOM JSON -->
+    <div class="view" id="v-json">
+      <div class="tools">
+        <input class="search" id="json-q" placeholder="Ko'rsatkich nomi yoki qiymat bo'yicha qidirish…" autocomplete="off">
+        <button class="btn" id="json-expand">Hammasini ochish</button>
+      </div>
+      <div id="json-list" class="list"></div>
+    </div>
+  </div>
+</main>
+</div>
+
+<script>
+var REFRESH_MS = 20000;
+var TITLES = {home:"Bosh sahifa", advisor:"AI Maslahatchi", state:"Zavod xotirasi",
+              predictions:"Bashorat", shift:"Smena hisobotlari", json:"Xom JSON ma'lumotlar"};
+var SEV = {CRITICAL:"XAVFLI", WARNING:"OGOHLANTIRISH", NORMAL:"NORMAL",
+           HIGH:"YUQORI", MEDIUM:"O'RTA", LOW:"PAST"};
+var CLS = {CRITICAL:"crit", HIGH:"crit", WARNING:"warn", MEDIUM:"warn",
+           NORMAL:"ok", LOW:"ok"};
+var state = {paused:false, timer:null, left:REFRESH_MS/1000, data:{}, expanded:false};
+
+function esc(s){ return String(s === null || s === undefined ? "" : s)
+  .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function cls(v){ return CLS[String(v || "").toUpperCase()] || ""; }
+function lab(v){ var k = String(v || "").toUpperCase(); return SEV[k] || k || "NOMA'LUM"; }
+function pad(n){ return n < 10 ? "0" + n : "" + n; }
+function soat(d){ return pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds()); }
+function abs(iso){
+  if(!iso) return "—";
+  var d = new Date(iso);
+  if(isNaN(d.getTime())) return "—";
+  return pad(d.getDate()) + "." + pad(d.getMonth()+1) + "." + d.getFullYear() + " " + soat(d);
+}
+function rel(iso){
+  if(!iso) return "—";
+  var s = Math.floor((Date.now() - new Date(iso).getTime())/1000);
+  if(s < 0) s = 0;
+  if(s < 60) return s + " soniya oldin";
+  if(s < 3600) return Math.floor(s/60) + " daqiqa oldin";
+  if(s < 86400) return Math.floor(s/3600) + " soat oldin";
+  return Math.floor(s/86400) + " kun oldin";
+}
+function tstamp(iso){
+  if(!iso) return '<span class="time">—</span>';
+  // To'liq sana-vaqt ASOSIY. "Shuncha vaqt oldin" faqat kursor
+  // ostidagi maslahatda qoladi — ekranni chalg'itmasligi uchun.
+  return '<span class="time" title="' + esc(rel(iso)) + '">' + esc(abs(iso)) + '</span>';
+}
+function setInd(id, v){ var el = document.getElementById(id); if(!el) return;
+  el.className = "ind " + cls(v); }
+
+/* ── Mavzu: avto / kunduzgi / tungi ───────────────────────────────── */
+function applyTheme(mode){
+  if(mode === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", mode);
+  var btns = document.querySelectorAll("[data-theme-set]");
+  for(var i = 0; i < btns.length; i++)
+    btns[i].setAttribute("aria-pressed", btns[i].dataset.themeSet === mode ? "true" : "false");
+  try{ localStorage.setItem("scada-theme", mode); }catch(e){}
+}
+(function(){
+  var saved = "auto";
+  try{ saved = localStorage.getItem("scada-theme") || "auto"; }catch(e){}
+  applyTheme(saved);
+})();
+document.querySelectorAll("[data-theme-set]").forEach(function(b){
+  b.addEventListener("click", function(){ applyTheme(b.dataset.themeSet); });
+});
+
+/* ── Ko'rinishlar ─────────────────────────────────────────────────── */
+function show(name){
+  document.querySelectorAll(".view").forEach(function(v){ v.classList.remove("active"); });
+  var el = document.getElementById("v-" + name);
+  if(el) el.classList.add("active");
+  document.querySelectorAll(".nav-item").forEach(function(n){
+    n.classList.toggle("active", n.dataset.view === name); });
+  document.getElementById("title").textContent = TITLES[name] || name;
+  try{ localStorage.setItem("scada-view", name); }catch(e){}
+}
+document.getElementById("nav").addEventListener("click", function(e){
+  var it = e.target.closest(".nav-item"); if(it) show(it.dataset.view);
+});
+document.querySelectorAll("[data-goto]").forEach(function(c){
+  c.addEventListener("click", function(){ show(c.dataset.goto); });
+});
+document.addEventListener("keydown", function(e){
+  if(e.target.tagName === "INPUT") return;
+  var order = ["home","advisor","state","predictions","shift","json"];
+  var i = parseInt(e.key, 10);
+  if(i >= 1 && i <= order.length) show(order[i-1]);
+});
+
+/* ── Chizish ──────────────────────────────────────────────────────── */
+function advisorCard(it, compact){
+  var c = cls(it.severity);
+  var head = '<span class="chip ' + c + '">' + esc(lab(it.severity)) + '</span> ' + tstamp(it.ts);
+  if(compact) return head + '<p style="margin-top:8px">' + esc(it.summary) + '</p>';
+  return '<div class="card stripe ' + c + '">' + head +
+    '<p style="margin-top:10px">' + esc(it.summary) + '</p>' +
+    (it.trend_analysis ? '<div class="block"><div class="lbl">Tendensiya</div><p>' + esc(it.trend_analysis) + '</p></div>' : '') +
+    (it.recommendation ? '<div class="block"><div class="lbl">Tavsiya</div><p>' + esc(it.recommendation) + '</p></div>' : '') +
+    '</div>';
+}
+
+function renderAdvisor(items){
+  var latest = document.getElementById("adv-latest");
+  var home = document.getElementById("h-advisor");
+  var hist = document.getElementById("adv-history");
+  if(!items || !items.length){
+    latest.innerHTML = home.innerHTML = '<div class="empty">Hozircha xulosa yo’q.</div>';
+    hist.innerHTML = ""; return;
+  }
+  latest.innerHTML = advisorCard(items[0], false);
+  home.innerHTML = advisorCard(items[0], true);
+  setInd("ind-advisor", items[0].severity);
+  hist.innerHTML = items.length > 1
+    ? items.slice(1).map(function(it){ return advisorCard(it, false); }).join("")
+    : '<div class="empty">Hali tarix yetarli emas.</div>';
+}
+
+function renderState(d){
+  var full = document.getElementById("state-full");
+  var home = document.getElementById("h-state");
+  if(!d || !d.state){
+    var m = '<div class="empty">Hali zavod xotirasi shakllanmagan (birinchi advisor sikli kutilmoqda).</div>';
+    full.innerHTML = home.innerHTML = m; return;
+  }
+  var s = d.state;
+  var st = (s.current_state && s.current_state.status) || "NOMA'LUM";
+  var c = cls(st);
+  setInd("ind-state", st);
+  var tr = s.trends || {}, an = s.active_anomalies || [], ck = s.recommended_checks || [];
+  var trHtml = Object.keys(tr).length
+    ? '<dl class="kv">' + Object.keys(tr).map(function(k){
+        return "<dt>" + esc(k) + "</dt><dd>" + esc(tr[k]) + "</dd>"; }).join("") + "</dl>"
+    : '<p style="color:var(--muted)">Tendensiya qayd etilmagan.</p>';
+  full.innerHTML = '<div class="card stripe ' + c + '">' +
+    '<span class="chip ' + c + '">' + esc(lab(st)) + '</span> ' + tstamp(d.ts) +
+    (s.last_summary ? '<p style="margin-top:10px">' + esc(s.last_summary) + '</p>' : '') +
+    '<div class="blocks">' +
+    '<div class="block"><div class="lbl">Tendensiyalar</div>' + trHtml + '</div>' +
+    '<div class="block"><div class="lbl">Faol anomaliyalar</div><p>' +
+      (an.length ? esc(an.join(", ")) : "Yo’q") + '</p></div>' +
+    '<div class="block"><div class="lbl">Tavsiya etilgan tekshiruvlar</div><p>' +
+      (ck.length ? esc(ck.join(", ")) : "Yo’q") + '</p></div>' +
+    (s.statistical_anomaly_score !== undefined
+      ? '<div class="block"><div class="lbl">Statistik anomaliya ko’rsatkichi</div><p class="mono">' +
+        esc(s.statistical_anomaly_score) + '</p></div>' : '') +
+    '</div></div>';
+  home.innerHTML = '<span class="chip ' + c + '">' + esc(lab(st)) + '</span> ' + tstamp(d.ts) +
+    (s.last_summary ? '<p style="margin-top:8px">' + esc(s.last_summary) + '</p>' : '');
+}
+
+function renderPredictions(items){
+  var list = document.getElementById("pred-list");
+  var home = document.getElementById("h-pred");
+  if(!items || !items.length){
+    list.innerHTML = home.innerHTML = '<div class="empty">Hozircha bashorat yo’q.</div>'; return;
+  }
+  setInd("ind-predictions", items[0].risk_level);
+  home.innerHTML = '<span class="chip ' + cls(items[0].risk_level) + '">' +
+    esc(lab(items[0].risk_level)) + '</span> ' + tstamp(items[0].ts) +
+    '<p style="margin-top:8px">' + esc(items[0].summary) + '</p>';
+  list.innerHTML = items.map(function(p){
+    var c = cls(p.risk_level);
+    var iv = p.interval_seconds ? Math.round(p.interval_seconds/60) + " daq oraliq" : "";
+    return '<div class="card stripe ' + c + '">' +
+      '<span class="chip ' + c + '">' + esc(lab(p.risk_level)) + '</span> ' + tstamp(p.ts) +
+      (iv ? ' <span class="time">· ' + esc(iv) + '</span>' : '') +
+      '<p style="margin-top:10px">' + esc(p.summary) + '</p></div>';
+  }).join("");
+}
+
+function renderShift(items){
+  var list = document.getElementById("shift-list");
+  var home = document.getElementById("h-shift");
+  if(!items || !items.length){
+    list.innerHTML = home.innerHTML = '<div class="empty">Hozircha smena hisoboti yo’q.</div>'; return;
+  }
+  home.innerHTML = tstamp(items[0].ts) + '<p style="margin-top:8px">' +
+    esc(String(items[0].report || "").slice(0, 220)) + '…</p>';
+  list.innerHTML = items.map(function(r){
+    return '<div class="card">' +
+      '<span class="chip">' + esc(abs(r.period_start)) + ' — ' + esc(abs(r.period_end)) + '</span> ' +
+      tstamp(r.ts) + '<p style="margin-top:10px; white-space:pre-wrap">' + esc(r.report) + '</p></div>';
+  }).join("");
+}
+
+function renderReports(items){
+  var list = document.getElementById("json-list");
+  var latest = document.getElementById("h-latest");
+  if(!items || !items.length){
+    list.innerHTML = latest.innerHTML = '<div class="empty">Hozircha o’qish yo’q.</div>'; return;
+  }
+  state.data.reports = items;
+  var p = items[0].payload || {};
+  var rd = p.readings || {}, eq = p.equipment_states || {}, al = p.alarms || [];
+  var keys = Object.keys(rd);
+  latest.innerHTML = '<div class="card">' +
+    '<span class="chip ok">' + keys.length + ' qiymat</span> ' +
+    '<span class="chip">' + Object.keys(eq).length + ' uskuna</span> ' +
+    '<span class="chip' + (al.length ? " crit" : "") + '">' + al.length + ' alarm</span> ' +
+    tstamp(items[0].ts) +
+    '<div class="rdg" style="border:0; background:transparent; padding:12px 0 0">' +
+      keys.slice(0, 12).map(function(k){
+        return '<div class="rd"><span title="' + esc(k) + '">' + esc(k) + '</span><b>' + esc(rd[k]) + '</b></div>';
+      }).join("") + '</div>' +
+    (keys.length > 12 ? '<p class="time" style="margin-top:8px">va yana ' + (keys.length-12) + ' ta — “Xom JSON” bo’limida</p>' : '') +
+    '</div>';
+  drawJson();
+}
+
+function drawJson(){
+  var items = state.data.reports || [];
+  var q = (document.getElementById("json-q").value || "").toLowerCase().trim();
+  var list = document.getElementById("json-list");
+  list.innerHTML = items.map(function(r, i){
+    var p = r.payload || {}, rd = p.readings || {};
+    var keys = Object.keys(rd);
+    if(q) keys = keys.filter(function(k){
+      return k.toLowerCase().indexOf(q) >= 0 || String(rd[k]).toLowerCase().indexOf(q) >= 0; });
+    if(q && !keys.length) return "";
+    var open = (state.expanded || i === 0) ? " open" : "";
+    return '<details class="raw"' + open + '><summary>' +
+      '<b class="mono">#' + esc(r.id) + '</b> ' + tstamp(r.ts) +
+      '<span class="n">' + keys.length + ' / ' + Object.keys(rd).length + ' qiymat · ' +
+      esc(r.model || "") + '</span></summary>' +
+      '<div class="rdg">' + (keys.length ? keys.map(function(k){
+        return '<div class="rd"><span title="' + esc(k) + '">' + esc(k) + '</span><b>' + esc(rd[k]) + '</b></div>';
+      }).join("") : '<div class="empty">Mos qiymat topilmadi.</div>') + '</div>' +
+      '<pre>' + esc(JSON.stringify(p, null, 2)) + '</pre></details>';
+  }).join("") || '<div class="empty">Qidiruvga mos yozuv topilmadi.</div>';
+}
+document.getElementById("json-q").addEventListener("input", drawJson);
+document.getElementById("json-expand").addEventListener("click", function(){
+  state.expanded = !state.expanded;
+  this.textContent = state.expanded ? "Hammasini yopish" : "Hammasini ochish";
+  drawJson();
+});
+
+/* ── Ma'lumot olish ───────────────────────────────────────────────── */
+function get(url){ return fetch(url).then(function(r){ return r.ok ? r.json() : null; })
+  .catch(function(){ return null; }); }
+
+function refresh(){
+  var pulse = document.getElementById("pulse");
+  pulse.classList.add("live");
+  Promise.all([
+    get("/api/insights"), get("/api/plant-state"), get("/api/predictions"),
+    get("/api/shift-reports"), get("/api/reports")
+  ]).then(function(res){
+    renderAdvisor(res[0]); renderState(res[1]); renderPredictions(res[2]);
+    renderShift(res[3]); renderReports(res[4]);
+    document.getElementById("updated").textContent = "Yangilandi " +
+      soat(new Date());
+    state.left = REFRESH_MS/1000;
+  });
+}
+function tick(){
+  if(state.paused) return;
+  state.left--;
+  if(state.left <= 0){ refresh(); state.left = REFRESH_MS/1000; }
+}
+document.getElementById("refresh").addEventListener("click", refresh);
+document.getElementById("pause").addEventListener("click", function(){
+  state.paused = !state.paused;
+  this.textContent = state.paused ? "▶ Davom etish" : "⏸ To'xtatish";
+  document.getElementById("pulse").classList.toggle("live", !state.paused);
+});
+
+try{ var v = localStorage.getItem("scada-view"); if(v && TITLES[v]) show(v); }catch(e){}
+refresh();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>
