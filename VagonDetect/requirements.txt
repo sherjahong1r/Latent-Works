@@ -1,0 +1,7 @@
+# VagonDetect uchun Python paketlari (sinovdan o'tgan versiyalar).
+# torch va torchvision bu yerda YO'Q: ularni install.sh / install.bat kompyuterdagi
+# GPU va CUDA drayveriga mos ravishda alohida o'rnatadi.
+ultralytics==8.4.155
+opencv-python==5.0.0.93
+lap==0.5.13
+numpy
